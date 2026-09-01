@@ -14,7 +14,7 @@ Panel {
   moduleName: "houz42.plugin-switcher"
   ipcTarget: "houz42.plugin-switcher"
 
-  readonly property string scriptPath: Qt.resolvedUrl("bin/omarchy-toggle-plugin").toString().replace("file://", "")
+  readonly property string scriptPath: decodeURIComponent(Qt.resolvedUrl("bin/omarchy-toggle-plugin").toString().replace("file://", ""))
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight

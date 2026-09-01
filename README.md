@@ -43,15 +43,28 @@ o.bind("SUPER + ALT + P", "Plugin Switcher", "omarchy-shell shell toggle houz42.
 
 The bar icon has no popup of its own — clicking it (or toggling it via IPC)
 runs `bin/omarchy-toggle-plugin`, which lists every enabled plugin via
-`omarchy-plugin-list --json`, hands the names to Omarchy's native picker
-(`omarchy-menu-select`, the same list widget "Enable/Disable Plugin" uses),
-and forwards the selection to `omarchy-shell shell toggle <id>`.
+`omarchy-plugin-list --json`, hands the names (each with a best-effort icon,
+see below) to Omarchy's native picker (`omarchy-menu-select`, the same list
+widget "Enable/Disable Plugin" uses), and forwards the selection to
+`omarchy-shell shell toggle <id>`.
+
+Each row's icon is read directly out of that plugin's own bar-widget QML
+source (`BarIconButton { text: "..." }`), matched to its manifest via
+`omarchy-plugin-list --json`'s `firstParty` flag (third-party plugins live
+under `~/.config/omarchy/plugins/<id>/`; first-party ones under
+`/usr/share/omarchy/shell/plugins/`). This only works for plugins whose icon
+is a literal string or a simple ternary in the source; plugins that compute
+their icon at runtime from live state (e.g. battery level, connection
+status) fall back to a generic icon, since that value isn't available
+without running the plugin's own QML.
 
 ## Known limitations
 
 - Only lists plugins whose `kinds` include `bar-widget`, `panel`, `overlay`,
   or `menu` — plugins that are purely `service` kind have no panel to
   toggle and are excluded.
+- Icons are best-effort (see above): most plugins show their real bar icon,
+  but plugins with a runtime-computed icon show a generic one instead.
 - Uses Omarchy's internal shell components (`qs.Ui` / `qs.Commons`), which
   aren't a documented stable plugin API and could change without notice.
 
