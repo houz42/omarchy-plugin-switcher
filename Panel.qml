@@ -24,29 +24,43 @@ Panel {
 
   readonly property var anchorWindow: button.QsWindow ? button.QsWindow.window : null
 
-  readonly property string ensureKeybindScriptPath: decodeURIComponent(Qt.resolvedUrl("bin/omarchy-plugin-switcher-ensure-keybind").toString().replace("file://", ""))
+  readonly property string keybindScriptPath: decodeURIComponent(Qt.resolvedUrl("bin/omarchy-plugin-switcher-keybind").toString().replace("file://", ""))
 
-  // Appends the default keybinding to ~/.config/hypr/bindings.lua the
-  // very first time this plugin ever loads, so it works out of the box
-  // without a manual copy-paste step. PersistentProperties (not a plain
-  // property) is required here -- see the omarchy-quickshell-plugin-dev
-  // reference on why a plain bool resets on every hot-reload/shell
-  // restart and would re-run this on every launch instead of once ever.
-  PersistentProperties {
-    id: persisted
-    reloadableId: "houz42.plugin-switcher-keybind-bootstrap"
-    property bool keybindEnsured: false
+  // The very first time this plugin ever loads, ask before appending the
+  // default keybinding to ~/.config/hypr/bindings.lua -- editing a user's
+  // own config file needs explicit in-the-moment consent, not just a
+  // README mention. The decision is tracked on disk (see
+  // bin/omarchy-plugin-switcher-keybind), not via QML's
+  // PersistentProperties: that only reliably survives hot-reloads within
+  // the same quickshell process, not a full `omarchy restart shell` (a
+  // new process), which would re-show the dialog on every restart.
+  property bool consentOpen: false
+
+  Process {
+    id: keybindStatusProc
+    command: [root.keybindScriptPath, "status"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.consentOpen = (text.trim() === "ask")
+    }
   }
 
   Process {
-    id: ensureKeybindProc
-    command: [root.ensureKeybindScriptPath]
+    id: keybindActionProc
   }
 
-  Component.onCompleted: {
-    if (persisted.keybindEnsured) return
-    persisted.keybindEnsured = true
-    ensureKeybindProc.running = true
+  Component.onCompleted: keybindStatusProc.running = true
+
+  function acceptKeybind() {
+    consentOpen = false
+    keybindActionProc.command = [root.keybindScriptPath, "accept"]
+    keybindActionProc.running = true
+  }
+
+  function declineKeybind() {
+    consentOpen = false
+    keybindActionProc.command = [root.keybindScriptPath, "decline"]
+    keybindActionProc.running = true
   }
 
   readonly property var labelPool: {
@@ -161,7 +175,7 @@ Panel {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: "󰍉"
+    text: "⌘"
     onPressed: function(b) { root.toggle() }
   }
 
@@ -252,6 +266,46 @@ Panel {
             color: Color.background
           }
         }
+      }
+    }
+  }
+
+  // One-time onboarding prompt (see Component.onCompleted above): shown
+  // automatically on first-ever load, independent of the hint overlay's
+  // own root.opened state.
+  PanelWindow {
+    id: consentWindow
+    screen: root.anchorWindow ? root.anchorWindow.screen : null
+    visible: root.consentOpen
+    color: "transparent"
+    exclusionMode: ExclusionMode.Ignore
+
+    WlrLayershell.namespace: "houz42-plugin-switcher-consent"
+    WlrLayershell.layer: WlrLayer.Overlay
+    WlrLayershell.keyboardFocus: root.consentOpen ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+
+    anchors {
+      top: true
+      bottom: true
+      left: true
+      right: true
+    }
+
+    Item {
+      anchors.fill: parent
+      focus: root.consentOpen
+
+      Keys.onPressed: function(event) { if (consentDialog.handleKey(event)) event.accepted = true }
+
+      ConfirmDialog {
+        id: consentDialog
+        anchors.fill: parent
+        opened: root.consentOpen
+        message: "Plugin Switcher can add a default keybinding (SUPER + ALT + P) to open hint mode.\n\nAdd it to ~/.config/hypr/bindings.lua now? You can change or remove it any time."
+        cancelText: "Skip"
+        confirmText: "Add it"
+        onCanceled: root.declineKeybind()
+        onConfirmed: root.acceptKeybind()
       }
     }
   }

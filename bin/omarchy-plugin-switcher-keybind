@@ -1,0 +1,57 @@
+#!/bin/bash
+# Manages the once-ever "add the default keybinding?" consent flow.
+# State lives on disk under ~/.local/state/omarchy/<id>/, the same
+# convention other Omarchy plugins use for persisted state -- QML's
+# PersistentProperties only reliably survives hot-reloads within the same
+# quickshell process, not a full `omarchy restart shell` (new process),
+# so it can't be trusted for a once-per-install decision on its own.
+#
+# Usage: omarchy-plugin-switcher-keybind <status|accept|decline>
+#   status   Prints "present" (binding already exists, e.g. accepted
+#            before, or added manually), "declined" (already asked and
+#            said no), or "ask" (never decided). Panel.qml only shows the
+#            consent dialog on "ask".
+#   accept   Appends the binding to bindings.lua and reloads Hyprland.
+#   decline  Records the decision so the dialog isn't shown again.
+
+set -euo pipefail
+
+BINDINGS="$HOME/.config/hypr/bindings.lua"
+MARKER="houz42.plugin-switcher"
+LINE='o.bind("SUPER + ALT + P", "Plugin Switcher", "omarchy-shell shell toggle houz42.plugin-switcher")'
+STATE_DIR="$HOME/.local/state/omarchy/houz42.plugin-switcher"
+DECLINED_FILE="$STATE_DIR/keybind-declined"
+
+binding_present() {
+  [[ -f $BINDINGS ]] && grep -qF "$MARKER" "$BINDINGS"
+}
+
+case "${1:-}" in
+  status)
+    if binding_present; then
+      echo "present"
+    elif [[ -f $DECLINED_FILE ]]; then
+      echo "declined"
+    else
+      echo "ask"
+    fi
+    ;;
+  accept)
+    binding_present && exit 0
+    {
+      echo ""
+      echo "-- Added by omarchy-plugin-switcher on first load. Change the key or"
+      echo "-- remove this block any time; it won't be re-added."
+      echo "$LINE"
+    } >> "$BINDINGS"
+    hyprctl reload >/dev/null 2>&1 || true
+    ;;
+  decline)
+    mkdir -p "$STATE_DIR"
+    touch "$DECLINED_FILE"
+    ;;
+  *)
+    echo "Usage: omarchy-plugin-switcher-keybind <status|accept|decline>" >&2
+    exit 1
+    ;;
+esac

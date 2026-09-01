@@ -25,8 +25,10 @@ omarchy plugin add https://github.com/houz42/omarchy-plugin-switcher.git --enabl
 
 ## Keybinding (Hyprland / Omarchy)
 
-`SUPER + ALT + P` is added automatically, the first time the plugin ever
-loads, by appending this line to `~/.config/hypr/bindings.lua`:
+The first time the plugin ever loads, it asks -- with an on-screen
+confirm/skip prompt, not just a README mention -- whether to add
+`SUPER + ALT + P` as the default keybinding. Confirming appends this line
+to `~/.config/hypr/bindings.lua`:
 
 ```lua
 o.bind("SUPER + ALT + P", "Plugin Switcher", "omarchy-shell shell toggle houz42.plugin-switcher")
@@ -34,9 +36,11 @@ o.bind("SUPER + ALT + P", "Plugin Switcher", "omarchy-shell shell toggle houz42.
 
 Omarchy's plugin system has no keybinding field of its own to declare this
 in `manifest.json` -- the only way to get a default binding is a plugin
-editing `bindings.lua` itself, so that's what this one does, once, marked
-with a comment (`-- Added by omarchy-plugin-switcher on first load`) so
-it's obvious where it came from.
+editing `bindings.lua` itself, so that's what accepting the prompt does,
+once, marked with a comment (`-- Added by omarchy-plugin-switcher on first
+load`) so it's obvious where it came from. Skipping the prompt (or pressing
+Escape) leaves your config untouched; you can still use the plugin by
+clicking its bar icon, or bind a key yourself using the line above.
 
 **To use a different key**, edit or delete that line directly -- it's a
 plain line in your own `bindings.lua` like any other binding, and won't be
