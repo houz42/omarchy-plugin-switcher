@@ -53,9 +53,21 @@ bar; bottom/left/right bar positions aren't handled yet.
   spacer, the workspace-number indicator) and are skipped -- toggling them
   would be a silent no-op. There's no way to detect that generically, so
   known no-op ids are denylisted in `Panel.qml`.
+- The label pool has 56 keys (10 digits + lowercase a-z + uppercase A-Z,
+  minus the 5 reserved letters). On a bar with more than 56 visible
+  plugin icons, the excess ones (sorted left to right) get no badge.
 - Uses Omarchy's internal shell components (`qs.Ui` / `qs.Commons` /
   `bar.debugBarGeometry()`), which aren't a documented stable plugin API
   and could change without notice.
+
+## Removal
+
+```bash
+omarchy plugin remove houz42.plugin-switcher
+```
+
+This plugin keeps no state outside its own directory, so removal is
+complete -- nothing else to clean up.
 
 ## License
 

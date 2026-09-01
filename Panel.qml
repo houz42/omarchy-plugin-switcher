@@ -111,6 +111,19 @@ Panel {
 
   Process {
     id: toggleProc
+    stderr: StdioCollector { id: toggleStderr; waitForEnd: true }
+    onExited: function(exitCode) {
+      if (exitCode !== 0) {
+        var reason = toggleStderr.text.trim()
+        notifyProc.command = ["omarchy-notification-send", "Plugin Switcher: toggle failed"
+          + (reason ? " (" + reason + ")" : "")]
+        notifyProc.running = true
+      }
+    }
+  }
+
+  Process {
+    id: notifyProc
   }
 
   BarIconButton {
