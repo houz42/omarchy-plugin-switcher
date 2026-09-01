@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "houz42.plugin-switcher",
+  "name": "Plugin Switcher",
+  "version": "1.0.0",
+  "author": "houz42",
+  "license": "MIT",
+  "description": "Fuzzy-pick any enabled plugin panel by name and toggle it open/closed, so one keybinding can reach every plugin without a per-plugin hotkey.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Plugin Switcher",
+    "description": "Fuzzy-pick a plugin panel to toggle",
+    "category": "System",
+    "allowMultiple": false
+  }
+}
