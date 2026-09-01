@@ -90,15 +90,21 @@ Panel {
     var pool = root.labelPool
     var seen = {}
     var list = []
-    for (var i = 0; i < geo.length && list.length < pool.length; i++) {
+    for (var i = 0; i < geo.length; i++) {
       var g = geo[i]
       if (!g || g.id === root.moduleName || seen[g.id]) continue
       if (!g.visible || !g.itemVisible) continue
       if (root.noOpIds.indexOf(g.id) !== -1) continue
       seen[g.id] = true
-      list.push({ id: g.id, label: pool[list.length], x: g.x, y: g.y, w: g.width, h: g.height })
+      list.push({ id: g.id, x: g.x, y: g.y, w: g.width, h: g.height })
     }
+    // Sort left-to-right BEFORE assigning labels, so badge keys read in
+    // the same order as the icons they point to -- assigning labels
+    // during the collection loop above would follow debugBarGeometry()'s
+    // arbitrary moduleSlot order instead.
     list.sort(function(a, b) { return a.x - b.x })
+    list = list.slice(0, pool.length)
+    for (var k = 0; k < list.length; k++) list[k].label = pool[k]
 
     // Nudge badges whose icons sit closer together than minBadgeSpacing
     // apart, so their bubbles don't overlap. The arrow stays centered on
