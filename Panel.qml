@@ -24,6 +24,31 @@ Panel {
 
   readonly property var anchorWindow: button.QsWindow ? button.QsWindow.window : null
 
+  readonly property string ensureKeybindScriptPath: decodeURIComponent(Qt.resolvedUrl("bin/omarchy-plugin-switcher-ensure-keybind").toString().replace("file://", ""))
+
+  // Appends the default keybinding to ~/.config/hypr/bindings.lua the
+  // very first time this plugin ever loads, so it works out of the box
+  // without a manual copy-paste step. PersistentProperties (not a plain
+  // property) is required here -- see the omarchy-quickshell-plugin-dev
+  // reference on why a plain bool resets on every hot-reload/shell
+  // restart and would re-run this on every launch instead of once ever.
+  PersistentProperties {
+    id: persisted
+    reloadableId: "houz42.plugin-switcher-keybind-bootstrap"
+    property bool keybindEnsured: false
+  }
+
+  Process {
+    id: ensureKeybindProc
+    command: [root.ensureKeybindScriptPath]
+  }
+
+  Component.onCompleted: {
+    if (persisted.keybindEnsured) return
+    persisted.keybindEnsured = true
+    ensureKeybindProc.running = true
+  }
+
   readonly property var labelPool: {
     var pool = []
     for (var d = 0; d <= 9; d++) pool.push(String(d))

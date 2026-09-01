@@ -25,11 +25,26 @@ omarchy plugin add https://github.com/houz42/omarchy-plugin-switcher.git --enabl
 
 ## Keybinding (Hyprland / Omarchy)
 
-Add to `~/.config/hypr/bindings.lua`:
+`SUPER + ALT + P` is added automatically, the first time the plugin ever
+loads, by appending this line to `~/.config/hypr/bindings.lua`:
 
 ```lua
 o.bind("SUPER + ALT + P", "Plugin Switcher", "omarchy-shell shell toggle houz42.plugin-switcher")
 ```
+
+Omarchy's plugin system has no keybinding field of its own to declare this
+in `manifest.json` -- the only way to get a default binding is a plugin
+editing `bindings.lua` itself, so that's what this one does, once, marked
+with a comment (`-- Added by omarchy-plugin-switcher on first load`) so
+it's obvious where it came from.
+
+**To use a different key**, edit or delete that line directly -- it's a
+plain line in your own `bindings.lua` like any other binding, and won't be
+re-added once you've touched it (the plugin only checks whether *a* line
+mentioning `houz42.plugin-switcher` exists at all, not what key it's bound
+to). If you track `bindings.lua` with a dotfile manager (chezmoi, stow,
+...), this appended line lives only in the live file until you re-add it
+to your dotfile source, same as any other manual edit to that file.
 
 ## How it works
 
@@ -66,8 +81,10 @@ bar; bottom/left/right bar positions aren't handled yet.
 omarchy plugin remove houz42.plugin-switcher
 ```
 
-This plugin keeps no state outside its own directory, so removal is
-complete -- nothing else to clean up.
+This removes the plugin itself but, since it lives outside the plugin's
+own directory, does **not** touch the keybinding line it added to
+`~/.config/hypr/bindings.lua` on first load -- delete that line yourself
+if you want it gone too.
 
 ## License
 
