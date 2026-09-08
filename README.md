@@ -38,15 +38,18 @@ Omarchy's plugin system has no keybinding field of its own to declare this
 in `manifest.json` -- the only way to get a default binding is a plugin
 editing `bindings.lua` itself, so that's what accepting the prompt does,
 once, marked with a comment (`-- Added by omarchy-plugin-switcher on first
-load`) so it's obvious where it came from. Skipping the prompt (or pressing
+load`) so it's obvious where it came from. The edit is made atomically
+(temp file renamed into place, refusing symlinked targets) with a
+timestamped `bindings.lua.bak.<timestamp>` backup right next to the
+original. Skipping the prompt (or pressing
 Escape) leaves your config untouched; you can still use the plugin by
 clicking its bar icon, or bind a key yourself using the line above.
 
 **To use a different key**, edit or delete that line directly -- it's a
 plain line in your own `bindings.lua` like any other binding, and won't be
-re-added once you've touched it (the plugin only checks whether *a* line
-mentioning `houz42.plugin-switcher` exists at all, not what key it's bound
-to). If you track `bindings.lua` with a dotfile manager (chezmoi, stow,
+re-added. Your answer to the prompt (yes or no) is recorded on disk under
+`~/.local/state/omarchy/houz42.plugin-switcher/`, so the prompt never
+comes back either way, even if you delete the line. If you track `bindings.lua` with a dotfile manager (chezmoi, stow,
 ...), this appended line lives only in the live file until you re-add it
 to your dotfile source, same as any other manual edit to that file.
 
@@ -88,7 +91,9 @@ omarchy plugin remove houz42.plugin-switcher
 This removes the plugin itself but, since it lives outside the plugin's
 own directory, does **not** touch the keybinding line it added to
 `~/.config/hypr/bindings.lua` on first load -- delete that line yourself
-if you want it gone too.
+if you want it gone too. It also leaves the consent-decision record in
+`~/.local/state/omarchy/houz42.plugin-switcher/`; remove that directory
+too for a completely clean slate.
 
 ## License
 

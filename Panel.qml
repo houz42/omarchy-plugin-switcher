@@ -47,19 +47,39 @@ Panel {
 
   Process {
     id: keybindActionProc
+    stderr: StdioCollector { id: keybindStderr; waitForEnd: true }
+    // The dialog closes the moment the user answers, so without this exit
+    // handler a failed config/state write would be completely silent.
+    // Overall runtime is capped by the `timeout` wrapper (exit 124).
+    onExited: function(exitCode) {
+      if (exitCode !== 0) {
+        notifyProc.command = ["omarchy-notification-send", "Plugin Switcher: keybind setup failed"
+          + root.failureSuffix(exitCode, keybindStderr.text)]
+        notifyProc.running = true
+      }
+    }
   }
 
   Component.onCompleted: keybindStatusProc.running = true
 
+  // A notification argument is no place for a full stderr dump: first
+  // line only, hard-capped at 120 chars -- plus a timeout marker when the
+  // `timeout` wrapper (exit 124) killed the process.
+  function failureSuffix(exitCode, stderrText) {
+    if (exitCode === 124) return " (timed out)"
+    var reason = (stderrText || "").trim().split("\n")[0].slice(0, 120)
+    return reason ? " (" + reason + ")" : ""
+  }
+
   function acceptKeybind() {
     consentOpen = false
-    keybindActionProc.command = [root.keybindScriptPath, "accept"]
+    keybindActionProc.command = ["timeout", "15", root.keybindScriptPath, "accept"]
     keybindActionProc.running = true
   }
 
   function declineKeybind() {
     consentOpen = false
-    keybindActionProc.command = [root.keybindScriptPath, "decline"]
+    keybindActionProc.command = ["timeout", "15", root.keybindScriptPath, "decline"]
     keybindActionProc.running = true
   }
 
@@ -102,11 +122,16 @@ Panel {
   function buildHints() {
     var geo = (root.bar && typeof root.bar.debugBarGeometry === "function") ? root.bar.debugBarGeometry() : []
     var pool = root.labelPool
+    // Ids come from whichever plugins happen to be installed and become
+    // argv elements of the toggle command below, so bound them to the
+    // shape a module id can legitimately have before any further use.
+    var idOk = /^[A-Za-z0-9._-]{1,64}$/
     var seen = {}
     var list = []
     for (var i = 0; i < geo.length; i++) {
       var g = geo[i]
-      if (!g || g.id === root.moduleName || seen[g.id]) continue
+      if (!g || typeof g.id !== "string" || !idOk.test(g.id)) continue
+      if (g.id === root.moduleName || seen[g.id]) continue
       if (!g.visible || !g.itemVisible) continue
       if (root.noOpIds.indexOf(g.id) !== -1) continue
       seen[g.id] = true
@@ -141,7 +166,7 @@ Panel {
   function activate(label) {
     for (var i = 0; i < root.hints.length; i++) {
       if (root.hints[i].label === label) {
-        toggleProc.command = ["omarchy-shell", "shell", "toggle", root.hints[i].id, "{}"]
+        toggleProc.command = ["timeout", "10", "omarchy-shell", "shell", "toggle", root.hints[i].id, "{}"]
         toggleProc.running = true
         root.close()
         return
@@ -159,9 +184,8 @@ Panel {
     stderr: StdioCollector { id: toggleStderr; waitForEnd: true }
     onExited: function(exitCode) {
       if (exitCode !== 0) {
-        var reason = toggleStderr.text.trim()
         notifyProc.command = ["omarchy-notification-send", "Plugin Switcher: toggle failed"
-          + (reason ? " (" + reason + ")" : "")]
+          + root.failureSuffix(exitCode, toggleStderr.text)]
         notifyProc.running = true
       }
     }

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "houz42.plugin-switcher",
   "name": "Plugin Switcher",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "author": "houz42",
   "license": "MIT",
   "description": "Vimium-style hint mode for the bar: press a keybinding, a letter/number badge appears over every plugin icon, press that key to toggle it -- no per-plugin hotkey needed.",
