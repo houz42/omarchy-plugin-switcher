@@ -36,6 +36,10 @@ STATE_DIR="$HOME/.local/state/omarchy/houz42.plugin-switcher"
 DECLINED_FILE="$STATE_DIR/keybind-declined"
 ACCEPTED_FILE="$STATE_DIR/keybind-accepted"
 LOCK_FILE="$STATE_DIR/keybind.lock"
+# Hard cap on how much of bindings.lua we ever read or copy. A real
+# Hyprland binding config is kilobytes; anything past this is refused
+# rather than scanned/copied unboundedly.
+BINDINGS_MAX_BYTES=65536
 
 die() {
   echo "omarchy-plugin-switcher-keybind: $*" >&2
@@ -78,7 +82,22 @@ write_marker() {
 }
 
 binding_present() {
-  [[ -f $BINDINGS ]] && grep -qF "$MARKER" "$BINDINGS"
+  # Read path. -f deliberately follows a symlink to a regular file:
+  # stow-style dotfile setups link bindings.lua, and READING through that
+  # link is harmless (the write path rejects symlinks separately, below).
+  # A FIFO or other non-regular fails -f. The size pre-check plus the
+  # capped read below bound the scan, and the caller wraps this whole
+  # process in `timeout`, so even a file swapped for a FIFO after these
+  # checks can block only until that kill fires.
+  [[ -f $BINDINGS ]] || return 1
+  local size
+  size="$(stat -c %s -- "$BINDINGS")" || return 1
+  if (( size > BINDINGS_MAX_BYTES )); then
+    die "$BINDINGS is $size bytes (limit $BINDINGS_MAX_BYTES); refusing to scan or edit an unverifiable config"
+  fi
+  local content
+  content="$(head -c "$BINDINGS_MAX_BYTES" -- "$BINDINGS")" || die "cannot read $BINDINGS"
+  [[ $content == *"$MARKER"* ]]
 }
 
 # Validate the edit target BEFORE writing: parent must be a real
@@ -131,7 +150,9 @@ case "${1:-}" in
     # file's mode (same-UID owner is preserved by construction).
     TMP_FILE="$(mktemp "$BINDINGS_DIR/.bindings.lua.XXXXXX")"
     if [[ -f $BINDINGS ]]; then
-      cat -- "$BINDINGS" > "$TMP_FILE"
+      # Capped copy: even if the file grew past the size check after
+      # binding_present stat'ed it, the temp copy stays bounded.
+      head -c "$BINDINGS_MAX_BYTES" -- "$BINDINGS" > "$TMP_FILE"
       chmod --reference="$BINDINGS" "$TMP_FILE"
     else
       chmod 600 "$TMP_FILE"

@@ -38,10 +38,19 @@ Panel {
 
   Process {
     id: keybindStatusProc
-    command: [root.keybindScriptPath, "status"]
+    // Same containment as the accept/decline/toggle calls below: this
+    // probe runs at every shell startup, so a blocked read (e.g. the
+    // config swapped for a FIFO) must be killed, not linger for the
+    // shell's lifetime. A killed/failed probe produces no stdout, so
+    // consentOpen stays false -- fail closed, never prompt from an
+    // unverifiable state.
+    command: ["timeout", "10", root.keybindScriptPath, "status"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.consentOpen = (text.trim() === "ask")
+    }
+    onExited: function(exitCode) {
+      if (exitCode !== 0) console.warn("Plugin Switcher: keybind status probe exited", exitCode, "-- consent prompt suppressed")
     }
   }
 
