@@ -58,8 +58,11 @@ ensure_state_dir() {
 }
 
 # Serialize accept/decline so two concurrent invocations can't duplicate
-# or corrupt either bindings.lua or the decision markers.
+# or corrupt either bindings.lua or the decision markers. The lock file
+# itself is a write into the state dir, so it gets the same
+# no-symlink-redirect guard as the markers before we open it.
 take_lock() {
+  reject_symlink "$LOCK_FILE"
   exec 9>"$LOCK_FILE"
   flock 9
 }
@@ -117,8 +120,12 @@ case "${1:-}" in
     validate_bindings_target
     trap cleanup_tmp EXIT
     # Recoverable backup first, so a bad edit is never the only copy.
+    # The backup path is a write target too: refuse to let a pre-existing
+    # symlink redirect it, same as the config file itself.
     if [[ -f $BINDINGS ]]; then
-      cp -a -- "$BINDINGS" "$BINDINGS.bak.$(date +%Y%m%d%H%M%S)"
+      BACKUP="$BINDINGS.bak.$(date +%Y%m%d%H%M%S)"
+      reject_symlink "$BACKUP"
+      cp -a -- "$BINDINGS" "$BACKUP"
     fi
     # Same-directory temp + atomic rename, preserving the original
     # file's mode (same-UID owner is preserved by construction).
